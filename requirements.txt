@@ -1,0 +1,12 @@
+mediapipe==0.10.21
+opencv-python>=4.8.0
+numpy>=1.24.0
+pillow>=10.0.0
+# Week 2 Dependencies
+torch>=2.1.0
+torchvision
+diffusers>=0.35.2
+transformers
+accelerate
+scipy
+gradio>=5.9.1

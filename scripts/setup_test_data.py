@@ -1,0 +1,63 @@
+#!/usr/bin/env python3
+"""
+Download sample hand gesture videos from public sources for testing.
+"""
+
+import os
+import sys
+
+def main():
+    print("=" * 60)
+    print("Hand Gesture Test Data Setup")
+    print("=" * 60)
+    print()
+    print("To set up test data, you have several options:")
+    print()
+    print("OPTION 1: Record Your Own Videos (Recommended)")
+    print("-" * 60)
+    print("Use the recording script to create custom test videos:")
+    print()
+    print("  venv/bin/python scripts/record_test_video.py \\")
+    print("    --gesture fist --duration 5 --output test_data/gestures/fist.mp4")
+    print()
+    print("Repeat for each gesture: fist, open_palm, pointing, pinch")
+    print()
+    print()
+    print("OPTION 2: Use Public Datasets")
+    print("-" * 60)
+    print("Download from these sources:")
+    print()
+    print("1. HaGRID Dataset:")
+    print("   https://github.com/hukenovs/hagrid")
+    print("   - 550k+ images of 18 gesture classes")
+    print("   - Can be converted to videos")
+    print()
+    print("2. Kaggle MediaPipe Hand Landmarks:")
+    print("   https://www.kaggle.com/datasets/muhammadkhalid/mediapipe-hand-landmarks-dataset")
+    print("   - 100 videos per gesture")
+    print("   - Already processed with MediaPipe")
+    print()
+    print("3. 20BN Jester Dataset:")
+    print("   https://developer.qualcomm.com/software/ai-datasets/jester")
+    print("   - 148k video clips")
+    print("   - Professional quality")
+    print()
+    print()
+    print("OPTION 3: Use Synthetic/Mock Data")
+    print("-" * 60)
+    print("For quick testing without real videos, the test suite")
+    print("will skip missing files and report what's available.")
+    print()
+    print("=" * 60)
+    print()
+    print("After obtaining videos, place them in:")
+    print("  test_data/gestures/fist.mp4")
+    print("  test_data/gestures/open_palm.mp4")
+    print("  test_data/gestures/pointing.mp4")
+    print("  test_data/gestures/pinch.mp4")
+    print()
+    print("Then run: venv/bin/python tests/test_with_videos.py")
+    print()
+
+if __name__ == "__main__":
+    main()
