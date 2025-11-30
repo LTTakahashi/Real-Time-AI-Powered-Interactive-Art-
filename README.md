@@ -8,17 +8,17 @@ Built with Python, OpenCV, MediaPipe, and Gradio, it offers a seamless "magical"
 
 ---
 
-## 🚀 Features
+## Features
 
-- **👋 Hand Tracking & Gestures**: Draw in the air using natural hand movements.
-- **🎨 Real-Time Canvas**: Smooth, high-quality drawing with Catmull-Rom spline interpolation.
-- **✨ AI Style Transfer**: Transform sketches into Photorealistic, Anime, Oil Painting, and more using SDXL-Turbo.
-- **⚡ High Performance**: 30 FPS tracking, <2s generation, optimized with threading and dirty rectangle rendering.
-- **🖥️ Interactive UI**: Complete web interface with webcam streaming, gesture feedback, and calibration.
+- **Hand Tracking & Gestures**: Draw in the air using natural hand movements.
+- **Real-Time Canvas**: Smooth, high-quality drawing with Catmull-Rom spline interpolation.
+- **AI Style Transfer**: Transform sketches into Photorealistic, Anime, Oil Painting, and more using SDXL-Turbo.
+- **High Performance**: 30 FPS tracking, <2s generation, optimized with threading and dirty rectangle rendering.
+- **Interactive UI**: Complete web interface with webcam streaming, gesture feedback, and calibration.
 
 ---
 
-## 🛠️ Installation
+##  Installation
 
 ### Prerequisites
 - Python 3.10 or higher
@@ -48,16 +48,60 @@ Built with Python, OpenCV, MediaPipe, and Gradio, it offers a seamless "magical"
 
 ---
 
-## 🎮 Usage Guide
+## 🚀 Modern UI (React + FastAPI) - Week 5 Update
+
+We have introduced a new, high-performance UI architecture.
+
+### Prerequisites
+- Node.js v18+
+- Python 3.10+
+
+### 1. Start the Backend
+The backend handles hand tracking, gesture recognition, and Stable Diffusion generation.
+
+```bash
+# Activate virtual environment
+source venv/bin/activate
+
+# Run the server
+python server.py
+```
+The server will start on `http://localhost:8000`.
+
+### 2. Start the Frontend
+The frontend provides a zero-latency drawing experience with a glassmorphism UI.
+
+```bash
+cd frontend
+
+# Install dependencies (first time only)
+npm install
+
+# Start development server
+npm run dev
+```
+Open `http://localhost:5173` in your browser.
+
+### 3. Usage
+- **Draw**: Point with your index finger.
+- **Stop Drawing**: Close your hand or stop pointing.
+- **Clear**: Hold an Open Palm for 1 second.
+- **Undo**: Pinch (Thumb + Index).
+- **Generate**: Select a style and click the "GENERATE" button.
+
+---
+
+## 🐍 Classic UI (Gradio)
+If you prefer the classic all-in-one Python interface:
 
 ### Gestures
 
 | Gesture | Action | Description |
-|---------|--------|-------------|
-| **POINTING** ☝️ | **Draw** | Move index finger to draw. Green border. |
-| **FIST** ✊ | **Stop** | Clench fist to stop drawing/hover. Blue border. |
-| **OPEN PALM** ✋ | **Clear** | Hold open palm for 1 second to clear canvas. Yellow border. |
-| **PINCH** 👌 | **Undo** | Pinch thumb and index finger to undo last stroke. Magenta border. |
+|---------|--------|-------------
+| **POINTING**  | **Draw** | Move index finger to draw. Green border. |
+| **FIST**  | **Stop** | Clench fist to stop drawing/hover. Blue border. |
+| **OPEN PALM**  | **Clear** | Hold open palm for 1 second to clear canvas. Yellow border. |
+| **PINCH**  | **Undo** | Pinch thumb and index finger to undo last stroke. Magenta border. |
 
 ### Interface Controls
 
@@ -68,7 +112,7 @@ Built with Python, OpenCV, MediaPipe, and Gradio, it offers a seamless "magical"
 
 ---
 
-## 🏗️ Architecture
+## Architecture
 
 GestureCanvas uses a multi-threaded architecture for maximum performance:
 
@@ -80,7 +124,7 @@ See [ARCHITECTURE.md](ARCHITECTURE.md) for detailed system design.
 
 ---
 
-## 🧪 Testing
+## Testing
 
 Run the comprehensive test suite to verify installation:
 
@@ -97,11 +141,11 @@ python tests/test_performance.py  # Week 3: Optimization
 
 ---
 
-## 🤝 Contributing
+## Contributing
 
 Contributions are welcome! Please read [CONTRIBUTING.md](CONTRIBUTING.md) for details on our code of conduct and the process for submitting pull requests.
 
-## 📄 License
+## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
