@@ -8,16 +8,16 @@ Experience the "Magical Mirror" effect where your hand movements instantly creat
 
 ---
 
-## ✨ Features
+## Features
 
 - **"Magical Mirror" Experience**: Zero-latency drawing on a glassmorphism UI.
 - **Hand Tracking & Gestures**: Draw, Hover, and Command using natural hand movements (MediaPipe).
 - **AI Style Transfer**: Instantly transform sketches into:
-  - 🌟 **Neon Cyberpunk**
-  - ✏️ **Pencil Sketch**
-  - 🎨 **Oil Painting**
-  - 💧 **Watercolor**
-  - 👾 **Pixel Art**
+  - **Neon Cyberpunk**
+  - **Pencil Sketch**
+  - **Oil Painting**
+  - **Watercolor**
+  - **Pixel Art**
 - **Dual Architecture**:
   - **Frontend**: React + Vite + Tailwind CSS (Visuals)
   - **Backend**: FastAPI + WebSockets + SDXL-Turbo (Logic)
@@ -25,7 +25,7 @@ Experience the "Magical Mirror" effect where your hand movements instantly creat
 
 ---
 
-## 🚀 Quick Start
+## Quick Start
 
 ### Prerequisites
 - **Node.js** v18+
@@ -66,16 +66,16 @@ npm run dev
 
 ---
 
-## 🎮 User Guide
+## User Guide
 
 ### Gestures
 | Gesture | Action | Visual Feedback |
 |---------|--------|-----------------|
-| **POINTING** ☝️ | **Draw** | Green Cursor + Trail |
-| **OPEN PALM** ✋ | **Hover** | Blue Cursor (No Draw) |
-| **FIST** ✊ | **Stop** | Cursor Disappears |
-| **PINCH** 👌 | **Undo** | Flash Magenta |
-| **HOLD PALM** ✋ (1s) | **Clear** | Flash Yellow |
+| **POINTING** | **Draw** | Green Cursor + Trail |
+| **OPEN PALM** | **Hover** | Blue Cursor (No Draw) |
+| **FIST** | **Stop** | Cursor Disappears |
+| **PINCH** | **Undo** | Flash Magenta |
+| **HOLD PALM** (1s) | **Clear** | Flash Yellow |
 
 ### Controls
 - **Style Selector**: Click the circular icons at the bottom to change the AI art style.
@@ -84,7 +84,7 @@ npm run dev
 
 ---
 
-## 🏗️ Architecture
+## Architecture
 
 GestureCanvas uses a decoupled **Client-Server** architecture:
 
@@ -98,7 +98,7 @@ See [ARCHITECTURE.md](ARCHITECTURE.md) for deep dives.
 
 ---
 
-## ✅ Testing
+## Testing
 
 We maintain rigorous testing standards.
 
@@ -117,7 +117,7 @@ npm test  # Runs Vitest
 
 ---
 
-## 🐍 Legacy Mode (Gradio)
+## Legacy Mode (Gradio)
 For the classic all-in-one Python interface (Week 1-4 version):
 ```bash
 python app.py
