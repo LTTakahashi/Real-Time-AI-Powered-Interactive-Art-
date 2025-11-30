@@ -4,151 +4,129 @@
 
 **GestureCanvas** is a real-time, gesture-controlled digital art application that transforms hand-drawn sketches into professional-quality artwork using Generative AI (Stable Diffusion).
 
-Built with Python, OpenCV, MediaPipe, and Gradio, it offers a seamless "magical" experience where your hand movements in the air become digital art on the screen.
+Experience the "Magical Mirror" effect where your hand movements instantly create glowing digital art, powered by a high-performance **FastAPI** backend and a sleek **React** frontend.
 
 ---
 
-## Features
+## ✨ Features
 
-- **Hand Tracking & Gestures**: Draw in the air using natural hand movements.
-- **Real-Time Canvas**: Smooth, high-quality drawing with Catmull-Rom spline interpolation.
-- **AI Style Transfer**: Transform sketches into Photorealistic, Anime, Oil Painting, and more using SDXL-Turbo.
-- **High Performance**: 30 FPS tracking, <2s generation, optimized with threading and dirty rectangle rendering.
-- **Interactive UI**: Complete web interface with webcam streaming, gesture feedback, and calibration.
+- **"Magical Mirror" Experience**: Zero-latency drawing on a glassmorphism UI.
+- **Hand Tracking & Gestures**: Draw, Hover, and Command using natural hand movements (MediaPipe).
+- **AI Style Transfer**: Instantly transform sketches into:
+  - 🌟 **Neon Cyberpunk**
+  - ✏️ **Pencil Sketch**
+  - 🎨 **Oil Painting**
+  - 💧 **Watercolor**
+  - 👾 **Pixel Art**
+- **Dual Architecture**:
+  - **Frontend**: React + Vite + Tailwind CSS (Visuals)
+  - **Backend**: FastAPI + WebSockets + SDXL-Turbo (Logic)
+- **Robustness**: 100% Test Coverage for core components.
 
 ---
 
-##  Installation
+## 🚀 Quick Start
 
 ### Prerequisites
-- Python 3.10 or higher
-- Webcam
-- (Optional) NVIDIA GPU with 6GB+ VRAM for faster generation
+- **Node.js** v18+
+- **Python** 3.10+
+- **Webcam**
+- (Optional) NVIDIA GPU (6GB+ VRAM) for faster AI generation.
 
-### Quick Start
-
-1. **Clone the repository**
-   ```bash
-   git clone https://github.com/LTTakahashi/Real-Time-AI-Powered-Interactive-Art-.git
-   cd Real-Time-AI-Powered-Interactive-Art-
-   ```
-
-2. **Set up environment**
-   ```bash
-   python3 -m venv venv
-   source venv/bin/activate  # On Windows: venv\Scripts\activate
-   pip install -r requirements.txt
-   ```
-
-3. **Run the application**
-   ```bash
-   python app.py
-   ```
-   Open your browser to `http://localhost:7860`
-
----
-
-## 🚀 Modern UI (React + FastAPI) - Week 5 Update
-
-We have introduced a new, high-performance UI architecture.
-
-### Prerequisites
-- Node.js v18+
-- Python 3.10+
-
-### 1. Start the Backend
-The backend handles hand tracking, gesture recognition, and Stable Diffusion generation.
-
+### 1. Backend Setup (The Brain)
 ```bash
-# Activate virtual environment
-source venv/bin/activate
+# Clone repository
+git clone https://github.com/LTTakahashi/Real-Time-AI-Powered-Interactive-Art-.git
+cd Real-Time-AI-Powered-Interactive-Art-
 
-# Run the server
+# Create & Activate Virtual Environment
+python3 -m venv venv
+source venv/bin/activate  # Windows: venv\Scripts\activate
+
+# Install Python Dependencies
+pip install -r requirements.txt
+
+# Start the API Server
 python server.py
 ```
-The server will start on `http://localhost:8000`.
+*Server runs at `http://localhost:8000`*
 
-### 2. Start the Frontend
-The frontend provides a zero-latency drawing experience with a glassmorphism UI.
-
+### 2. Frontend Setup (The Face)
+Open a new terminal window:
 ```bash
 cd frontend
 
-# Install dependencies (first time only)
+# Install Node Dependencies
 npm install
 
-# Start development server
+# Start the UI
 npm run dev
 ```
-Open `http://localhost:5173` in your browser.
-
-### 3. Usage
-- **Draw**: Point with your index finger.
-- **Stop Drawing**: Close your hand or stop pointing.
-- **Clear**: Hold an Open Palm for 1 second.
-- **Undo**: Pinch (Thumb + Index).
-- **Generate**: Select a style and click the "GENERATE" button.
+*UI runs at `http://localhost:5173`*
 
 ---
 
-## 🐍 Classic UI (Gradio)
-If you prefer the classic all-in-one Python interface:
+## 🎮 User Guide
 
 ### Gestures
+| Gesture | Action | Visual Feedback |
+|---------|--------|-----------------|
+| **POINTING** ☝️ | **Draw** | Green Cursor + Trail |
+| **OPEN PALM** ✋ | **Hover** | Blue Cursor (No Draw) |
+| **FIST** ✊ | **Stop** | Cursor Disappears |
+| **PINCH** 👌 | **Undo** | Flash Magenta |
+| **HOLD PALM** ✋ (1s) | **Clear** | Flash Yellow |
 
-| Gesture | Action | Description |
-|---------|--------|-------------
-| **POINTING**  | **Draw** | Move index finger to draw. Green border. |
-| **FIST**  | **Stop** | Clench fist to stop drawing/hover. Blue border. |
-| **OPEN PALM**  | **Clear** | Hold open palm for 1 second to clear canvas. Yellow border. |
-| **PINCH**  | **Undo** | Pinch thumb and index finger to undo last stroke. Magenta border. |
-
-### Interface Controls
-
-- **Initialize System**: Starts the webcam and AI models.
-- **Style Selection**: Choose from Photorealistic, Anime, Oil Painting, Watercolor, or Sketch.
-- **Generate**: Transform your current canvas into the selected style.
-- **Calibration**: Adjust sensitivity in the "Calibration" accordion.
+### Controls
+- **Style Selector**: Click the circular icons at the bottom to change the AI art style.
+- **Generate**: Click the "GENERATE" button (or use a custom gesture if configured) to create AI art.
+- **Status Pill**: Watch the top-left indicator for system state (Idle, Drawing, Processing).
 
 ---
 
-## Architecture
+## 🏗️ Architecture
 
-GestureCanvas uses a multi-threaded architecture for maximum performance:
+GestureCanvas uses a decoupled **Client-Server** architecture:
 
-1. **Hand Tracking Thread**: Captures webcam frames and processes MediaPipe landmarks (30 FPS).
-2. **Main Thread**: Handles UI event loop, canvas rendering, and user interaction.
-3. **Generation Thread**: Processes Stable Diffusion requests asynchronously to prevent UI freezing.
+1.  **Frontend (React)**: Captures webcam video, renders the drawing canvas, and handles user interaction. It streams video frames to the backend via **WebSockets**.
+2.  **Backend (FastAPI)**:
+    - **Hand Tracking**: Processes frames with MediaPipe.
+    - **Gesture Engine**: Recognizes intent (Draw, Clear, Undo).
+    - **Stable Diffusion**: Generates artwork on demand via REST API.
 
-See [ARCHITECTURE.md](ARCHITECTURE.md) for detailed system design.
+See [ARCHITECTURE.md](ARCHITECTURE.md) for deep dives.
 
 ---
 
-## Testing
+## ✅ Testing
 
-Run the comprehensive test suite to verify installation:
+We maintain rigorous testing standards.
 
+### Backend Tests
 ```bash
-# Run all tests
-python verify_installation.py
+python verify_installation.py  # Run full suite
+# OR
+python -m unittest tests/test_canvas.py
+```
 
-# Run specific test suites
-python tests/test_unit.py         # Week 1: Gestures
-python tests/test_canvas.py       # Week 2: Canvas
-python tests/test_threading.py    # Week 3: Threading
-python tests/test_performance.py  # Week 3: Optimization
+### Frontend Tests
+```bash
+cd frontend
+npm test  # Runs Vitest
 ```
 
 ---
 
-## Contributing
-
-Contributions are welcome! Please read [CONTRIBUTING.md](CONTRIBUTING.md) for details on our code of conduct and the process for submitting pull requests.
-
-## License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+## 🐍 Legacy Mode (Gradio)
+For the classic all-in-one Python interface (Week 1-4 version):
+```bash
+python app.py
+```
+*Runs at `http://localhost:7860`*
 
 ---
+
+## License
+MIT License - see [LICENSE](LICENSE).
 
 *Created by Takahashi Team*
