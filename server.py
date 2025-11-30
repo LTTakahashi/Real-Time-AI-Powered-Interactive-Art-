@@ -37,8 +37,8 @@ class ServerState:
     def __init__(self):
         self.tracker = HandTracker()
         self.recognizer = GestureRecognizer()
-        # 1024x1024 internal
-        self.canvas = GestureCanvas(internal_size=(1024, 1024), display_size=(640, 480))
+        # Use frontend canvas size (640x480) for coordinate consistency
+        self.canvas = GestureCanvas(internal_size=(640, 480), display_size=(640, 480))
         self.style_transfer = StableDiffusionStyleTransfer()
         
         # Use ThreadingManager for generation queue/thread
@@ -219,24 +219,40 @@ async def result_poller():
         try:
             if not state.threading_manager.result_queue.empty():
                 result = state.threading_manager.result_queue.get_nowait()
-                # Store result in a global dict (with expiration)
-                # For now, just a simple dict
-                results_store[result.request_id] = result
+                # Store result with timestamp for TTL cleanup
+                results_store[result.request_id] = (result, time.time())
             await asyncio.sleep(0.1)
         except Exception as e:
             logger.error(f"Poller error: {e}")
             await asyncio.sleep(1)
+
+# Cleanup old results (TTL = 5 minutes)
+async def cleanup_old_results():
+    while True:
+        try:
+            now = time.time()
+            to_delete = [
+                rid for rid, (res, ts) in results_store.items() 
+                if now - ts > 300  # 5 minute TTL
+            ]
+            for rid in to_delete:
+                del results_store[rid]
+                logger.info(f"Cleaned up result {rid}")
+        except Exception as e:
+            logger.error(f"Cleanup error: {e}")
+        await asyncio.sleep(60)  # Run every minute
 
 results_store = {}
 
 @app.on_event("startup")
 async def startup_event():
     asyncio.create_task(result_poller())
+    asyncio.create_task(cleanup_old_results())
 
 @app.get("/result/{request_id}")
 async def get_result(request_id: str):
     if request_id in results_store:
-        result = results_store[request_id]
+        result, _timestamp = results_store[request_id]  # Unpack tuple
         if result.success:
             # Encode image
             _, buffer = cv2.imencode('.jpg', result.styled_image)

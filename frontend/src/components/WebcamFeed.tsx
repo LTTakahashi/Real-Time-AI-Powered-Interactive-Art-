@@ -21,6 +21,7 @@ const WebcamFeed: React.FC<WebcamFeedProps> = ({ onFrame }) => {
                 }
             } catch (err) {
                 console.error("Error accessing webcam:", err)
+                alert(`Camera Error: ${(err as Error).message}\n\nPlease allow camera access and refresh the page.`)
             }
         }
 

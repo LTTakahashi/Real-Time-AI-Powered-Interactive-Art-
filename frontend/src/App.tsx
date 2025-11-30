@@ -1,28 +1,38 @@
-import React, { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import WebcamFeed from './components/WebcamFeed'
 import DrawingCanvas, { type DrawingCanvasRef } from './components/DrawingCanvas'
 import StatusPill, { type SystemStatus } from './components/StatusPill'
 import StyleSelector, { type StyleOption } from './components/StyleSelector'
 import { WebSocketClient } from './services/WebSocketClient'
-import { Wand2, RefreshCw, Download } from 'lucide-react'
+import { Wand2, RefreshCw } from 'lucide-react'
 
 const STYLES: StyleOption[] = [
-  { id: 'neon', name: 'Neon', color: 'bg-cyan-500' },
-  { id: 'sketch', name: 'Sketch', color: 'bg-gray-500' },
-  { id: 'oil', name: 'Oil Paint', color: 'bg-yellow-600' },
+  { id: 'photorealistic', name: 'Photo', color: 'bg-blue-500' },
+  { id: 'anime', name: 'Anime', color: 'bg-pink-500' },
+  { id: 'oil_painting', name: 'Oil Paint', color: 'bg-yellow-600' },
   { id: 'watercolor', name: 'Watercolor', color: 'bg-blue-400' },
-  { id: 'pixel', name: 'Pixel Art', color: 'bg-purple-500' },
+  { id: 'sketch', name: 'Sketch', color: 'bg-gray-500' },
 ]
 
 function App() {
   const [status, setStatus] = useState<SystemStatus>('disconnected')
-  const [selectedStyle, setSelectedStyle] = useState('neon')
+  const [selectedStyle, setSelectedStyle] = useState('photorealistic')
   const [generatedImage, setGeneratedImage] = useState<string | null>(null)
   const [isGenerating, setIsGenerating] = useState(false)
 
   const wsRef = useRef<WebSocketClient | null>(null)
   const canvasRef = useRef<DrawingCanvasRef>(null)
   const lastFrameTime = useRef(0)
+  const pollIntervalRef = useRef<number | null>(null)
+
+  useEffect(() => {
+    // Cleanup polling interval on unmount
+    return () => {
+      if (pollIntervalRef.current) {
+        clearInterval(pollIntervalRef.current)
+      }
+    }
+  }, [])
 
   useEffect(() => {
     // Initialize WebSocket
@@ -106,21 +116,36 @@ function App() {
       const data = await response.json()
       const requestId = data.request_id
 
-      // Poll for result
-      const pollInterval = setInterval(async () => {
-        const res = await fetch(`http://localhost:8000/result/${requestId}`)
-        const result = await res.json()
+      // Poll for result with timeout
+      let pollCount = 0
+      const maxPolls = 60  // 60 seconds timeout
 
-        if (result.status === 'complete') {
-          clearInterval(pollInterval)
-          setGeneratedImage(`data:image/jpeg;base64,${result.image}`)
+      pollIntervalRef.current = setInterval(async () => {
+        if (pollCount++ > maxPolls) {
+          if (pollIntervalRef.current) clearInterval(pollIntervalRef.current)
           setIsGenerating(false)
           setStatus('idle')
-        } else if (result.status === 'failed') {
-          clearInterval(pollInterval)
-          setIsGenerating(false)
-          setStatus('idle')
-          alert('Generation failed')
+          alert('Generation timed out. Please try again.')
+          return
+        }
+
+        try {
+          const res = await fetch(`http://localhost:8000/result/${requestId}`)
+          const result = await res.json()
+
+          if (result.status === 'complete') {
+            if (pollIntervalRef.current) clearInterval(pollIntervalRef.current)
+            setGeneratedImage(`data:image/jpeg;base64,${result.image}`)
+            setIsGenerating(false)
+            setStatus('idle')
+          } else if (result.status === 'failed') {
+            if (pollIntervalRef.current) clearInterval(pollIntervalRef.current)
+            setIsGenerating(false)
+            setStatus('idle')
+            alert('Generation failed: ' + (result.error || 'Unknown error'))
+          }
+        } catch (pollError) {
+          console.error('Polling error:', pollError)
         }
       }, 1000)
 
@@ -128,6 +153,7 @@ function App() {
       console.error(e)
       setIsGenerating(false)
       setStatus('idle')
+      alert('Failed to start generation: ' + (e as Error).message)
     }
   }
 
