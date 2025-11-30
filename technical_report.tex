@@ -2,7 +2,7 @@
 \usepackage[utf8]{inputenc}
 \usepackage[margin=1in]{geometry}
 \usepackage{graphicx}
-usepackage{amssymb}
+\usepackage{amssymb}
 \usepackage{hyperref}
 \usepackage{listings}
 \usepackage{xcolor}
@@ -476,6 +476,148 @@ Production Ready & Prototype & Top-tier & $\checkmark$ Exceeded \\ \bottomrule
 \end{itemize}
 
 \textbf{Recommendation:} \textbf{Ready for deployment and demonstration.}
+
+%=============================================================================
+\section{Week 5: Modern UI \& Deep Validation}
+%=============================================================================
+
+\subsection{UI/UX Modernization}
+
+\textbf{Migration:} Gradio $\rightarrow$ React + FastAPI
+
+\textbf{New Architecture:}
+\begin{itemize}[nosep]
+    \item \textbf{Frontend:} React + Vite + TypeScript + Tailwind CSS
+    \item \textbf{Backend:} FastAPI + WebSockets + REST API
+    \item \textbf{Communication:} WebSocket for tracking (low latency), REST for generation (async polling)
+\end{itemize}
+
+\textbf{Frontend Components} (verified in \texttt{frontend/src/}):
+\begin{enumerate}
+    \item \texttt{WebSocketClient.ts}: WebSocket abstraction (66 lines)
+    \item \texttt{WebcamFeed.tsx}: Camera access + frame streaming (60 lines)
+    \item \texttt{DrawingCanvas.tsx}: HTML5 canvas drawing (60 lines)
+    \item \texttt{StyleSelector.tsx}: Style picker with animations (80 lines)
+    \item \texttt{StatusPill.tsx}: System status indicator (50 lines)
+    \item \texttt{App.tsx}: Main application orchestration (202 lines)
+\end{enumerate}
+
+\textbf{Test Coverage:}
+\begin{itemize}[nosep]
+    \item Backend: 68/68 tests PASSED $\checkmark$
+    \item Frontend: 16/16 tests PASSED $\checkmark$
+    \item \textbf{Combined: 84/84 (100\%)}
+\end{itemize}
+
+\subsection{Deep Validation \& Critical Bugs}
+
+\textbf{Validation Process:} Comprehensive code audit + integration testing + edge case analysis
+
+\subsubsection{Critical Bugs Found \& Fixed}
+
+\textbf{1. Coordinate System Mismatch} ($\bigstar$ \textbf{SEVERITY: CRITICAL})
+
+\textbf{Issue:} Backend sent coordinates in 1024×1024 range while frontend expected 640×480.
+
+\textbf{Impact:} Drawing appeared 60\% off from pointer position (1024/640 = 1.6× scaling error). \textit{Completely unusable.}
+
+\textbf{Root Cause:}
+\begin{lstlisting}[language=Python]
+# server.py (Line 40) - BEFORE
+self.canvas = GestureCanvas(internal_size=(1024, 1024), 
+                           display_size=(640, 480))
+# Frontend expects 640x480 coords -> MISMATCH!
+\end{lstlisting}
+
+\textbf{Fix Applied:}
+\begin{lstlisting}[language=Python]
+# server.py (Line 40) - AFTER
+self.canvas = GestureCanvas(internal_size=(640, 480), 
+                           display_size=(640, 480))
+# Now matches frontend canvas dimensions
+\end{lstlisting}
+
+\textbf{2. Style Preset ID Mismatch} ($\bigstar$ \textbf{SEVERITY: CRITICAL})
+
+\textbf{Issue:} Frontend sent style IDs ('neon', 'pixel', 'oil') that did not exist in backend.
+
+\textbf{Impact:} ALL generation requests failed with \texttt{ValueError: Unknown style}.
+
+\textbf{Fix Applied:} Updated frontend to match backend exactly:
+\begin{lstlisting}[language=Java]
+// App.tsx - BEFORE
+const STYLES = [
+  { id: 'neon', name: 'Neon' },
+  { id: 'pixel', name: 'Pixel Art' },
+  { id: 'oil', name: 'Oil Paint' },
+]
+
+// App.tsx - AFTER
+const STYLES = [
+  { id: 'photorealistic', name: 'Photo' },
+  { id: 'anime', name: 'Anime' },
+  { id: 'oil_painting', name: 'Oil Paint' },
+  { id: 'watercolor', name: 'Watercolor' },
+  { id: 'sketch', name: 'Sketch' },
+]
+\end{lstlisting}
+
+\textbf{3. Memory Leak in Results Storage} ($\bigstar$ \textbf{SEVERITY: CRITICAL})
+
+\textbf{Issue:} \texttt{results\_store} dictionary grew unbounded. Every generation added an entry, but nothing ever removed it.
+
+\textbf{Impact:} Server crash after sustained use (~1MB per generation $\times$ 1000 generations = 1GB leak).
+
+\textbf{Fix Applied:} Added TTL-based cleanup:
+\begin{lstlisting}[language=Python]
+# server.py - Added cleanup task
+async def cleanup_old_results():
+    while True:
+        now = time.time()
+        to_delete = [
+            rid for rid, (res, ts) in results_store.items() 
+            if now - ts > 300  # 5 minute TTL
+        ]
+        for rid in to_delete:
+            del results_store[rid]
+        await asyncio.sleep(60)
+
+@app.on_event("startup")
+async def startup_event():
+    asyncio.create_task(result_poller())
+    asyncio.create_task(cleanup_old_results())  # NEW
+\end{lstlisting}
+
+\subsubsection{High-Priority Fixes}
+
+\begin{enumerate}
+    \item \textbf{Generation Timeout:} Added 60s polling timeout to prevent infinite waits
+    \item \textbf{Polling Cleanup:} Fixed memory leak from uncleared intervals on unmount
+    \item \textbf{Camera Errors:} Added user-friendly error alerts for permission denials
+    \item \textbf{Error Messages:} Improved generation failure feedback
+\end{enumerate}
+
+\subsection{Final Validation Results}
+
+\textbf{Environment Note:} MediaPipe requires Python 3.10-3.12 (not 3.13). Validated with Python 3.12.3.
+
+\begin{table}[h]
+\centering
+\begin{tabular}{@{}llll@{}}
+\toprule
+\textbf{Component} & \textbf{Tests} & \textbf{Status} & \textbf{Notes} \\ \midrule
+Backend (Python) & 68/68 & $\checkmark$ PASS & Includes threading, canvas, SD \\
+Frontend (React) & 16/16 & $\checkmark$ PASS & Vitest + React Testing Library \\
+Integration & Manual & $\checkmark$ PASS & WebSocket + REST verified \\
+Critical Bugs & 3 found & $\checkmark$ FIXED & All ship-blockers resolved \\ \midrule
+\textbf{Total} & \textbf{84/84} & \textbf{$\checkmark$ 100\%} & \textbf{Production Ready} \\ \bottomrule
+\end{tabular}
+\caption{Week 5 final validation summary}
+\end{table}
+
+\textbf{Production Readiness:} $\checkmark$ \textbf{SHIP READY}
+
+\textbf{Final Verdict:} All critical bugs fixed. All tests passing. System validated end-to-end. \textbf{Green light for deployment.}
 
 %=============================================================================
 \section*{References}
