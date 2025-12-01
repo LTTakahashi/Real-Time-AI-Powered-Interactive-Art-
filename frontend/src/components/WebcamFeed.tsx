@@ -2,14 +2,44 @@ import React, { useEffect, useRef } from 'react'
 
 interface WebcamFeedProps {
     onFrame: (canvas: HTMLCanvasElement) => void
+    demoMode?: boolean
 }
 
-const WebcamFeed: React.FC<WebcamFeedProps> = ({ onFrame }) => {
+const WebcamFeed: React.FC<WebcamFeedProps> = ({ onFrame, demoMode = false }) => {
     const videoRef = useRef<HTMLVideoElement>(null)
     const canvasRef = useRef<HTMLCanvasElement>(null)
 
     useEffect(() => {
         const startCamera = async () => {
+            // Clean up any existing video source first
+            if (videoRef.current) {
+                if (videoRef.current.srcObject) {
+                    const stream = videoRef.current.srcObject as MediaStream
+                    stream.getTracks().forEach(track => track.stop())
+                    videoRef.current.srcObject = null
+                }
+            }
+
+            if (demoMode) {
+                if (videoRef.current) {
+                    videoRef.current.src = "/demo.mp4"
+                    videoRef.current.loop = true
+                    videoRef.current.muted = true
+
+                    // Add error handling for video load
+                    videoRef.current.onerror = (e) => {
+                        console.error("Demo video load error:", e)
+                        alert("Failed to load demo video. Please check that demo.mp4 exists in the public folder.")
+                    }
+
+                    videoRef.current.play().catch(e => {
+                        console.error("Demo play error:", e)
+                        alert(`Demo playback failed: ${e.message}`)
+                    })
+                }
+                return
+            }
+
             try {
                 const stream = await navigator.mediaDevices.getUserMedia({
                     video: { width: 640, height: 480 }
@@ -34,7 +64,7 @@ const WebcamFeed: React.FC<WebcamFeedProps> = ({ onFrame }) => {
                 stream.getTracks().forEach(track => track.stop())
             }
         }
-    }, [])
+    }, [demoMode])
 
     // Frame loop
     useEffect(() => {

@@ -256,15 +256,21 @@ class StableDiffusionStyleTransfer:
         prepared_image, prep_info = self.prepare_image(input_image)
         
         # Generate
-        result = self.pipeline(
-            prompt=preset.prompt,
-            negative_prompt=preset.negative_prompt,
-            image=prepared_image,
-            strength=preset.strength,
-            guidance_scale=preset.guidance_scale,
-            num_inference_steps=num_inference_steps,
-            callback=lambda step, *args: progress_callback(step, num_inference_steps) if progress_callback else None
-        )
+        # Generate
+        kwargs = {
+            'prompt': preset.prompt,
+            'negative_prompt': preset.negative_prompt,
+            'image': prepared_image,
+            'strength': preset.strength,
+            'guidance_scale': preset.guidance_scale,
+            'num_inference_steps': num_inference_steps,
+        }
+        
+        if progress_callback:
+            kwargs['callback'] = lambda step, *args: progress_callback(step, num_inference_steps)
+            kwargs['callback_steps'] = 1
+            
+        result = self.pipeline(**kwargs)
         
         generation_time = time.time() - start_time
         

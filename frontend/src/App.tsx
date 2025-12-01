@@ -19,6 +19,7 @@ function App() {
   const [selectedStyle, setSelectedStyle] = useState('photorealistic')
   const [generatedImage, setGeneratedImage] = useState<string | null>(null)
   const [isGenerating, setIsGenerating] = useState(false)
+  const [demoMode, setDemoMode] = useState(false)
 
   const wsRef = useRef<WebSocketClient | null>(null)
   const canvasRef = useRef<DrawingCanvasRef>(null)
@@ -158,10 +159,33 @@ function App() {
   }
 
   return (
-    <div className="relative w-screen h-screen bg-black overflow-hidden font-sans text-white">
+    <div className="relative w-screen h-screen bg-neutral-950 text-white overflow-hidden selection:bg-purple-500/30 font-sans">
+
+      {/* Header */}
+      <div className="absolute top-0 left-0 right-0 z-50 p-6 flex justify-between items-start bg-gradient-to-b from-black/80 to-transparent pointer-events-none">
+        <div className="pointer-events-auto flex flex-col gap-2">
+          <h1 className="text-3xl font-bold tracking-tighter bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent drop-shadow-lg">
+            GestureCanvas
+          </h1>
+          <StatusPill status={status} />
+        </div>
+
+        <div className="pointer-events-auto">
+          <button
+            onClick={() => setDemoMode(!demoMode)}
+            className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all border ${demoMode
+                ? 'bg-purple-500/20 border-purple-500 text-purple-300 shadow-[0_0_10px_rgba(168,85,247,0.3)]'
+                : 'bg-white/5 border-white/10 text-white/50 hover:bg-white/10'
+              }`}
+          >
+            {demoMode ? '● DEMO MODE' : '○ WEBCAM'}
+          </button>
+        </div>
+      </div>
+
       {/* Webcam Layer */}
-      <div className="absolute inset-0 z-0">
-        <WebcamFeed onFrame={handleFrame} />
+      <div className="absolute inset-0 z-0 opacity-60">
+        <WebcamFeed onFrame={handleFrame} demoMode={demoMode} />
       </div>
 
       {/* Drawing Layer */}
@@ -169,56 +193,47 @@ function App() {
         <DrawingCanvas ref={canvasRef} width={640} height={480} />
       </div>
 
-      {/* HUD Layer */}
-      <div className="absolute inset-0 z-20 pointer-events-none flex flex-col justify-between p-8">
-        {/* Top Bar */}
-        <div className="flex justify-between items-start">
-          <div className="flex flex-col gap-2">
-            <h1 className="text-4xl font-bold tracking-tighter bg-gradient-to-r from-pink-500 to-violet-500 bg-clip-text text-transparent drop-shadow-lg">
-              GestureCanvas
-            </h1>
-            <StatusPill status={status} />
+      {/* Generated Image Overlay */}
+      {generatedImage && (
+        <div className="absolute inset-0 z-30 flex items-center justify-center bg-black/60 backdrop-blur-sm p-12 animate-in fade-in duration-300">
+          <div className="relative group">
+            <img
+              src={generatedImage}
+              alt="Generated Art"
+              className="max-w-full max-h-[80vh] rounded-xl border-2 border-white/20 shadow-2xl transition-transform hover:scale-[1.02]"
+            />
+            <button
+              onClick={() => setGeneratedImage(null)}
+              className="absolute -top-4 -right-4 bg-white text-black p-2 rounded-full shadow-lg hover:bg-gray-200 transition-colors pointer-events-auto"
+            >
+              <RefreshCw size={20} />
+            </button>
           </div>
-
-          {/* Generated Image Overlay */}
-          {generatedImage && (
-            <div className="pointer-events-auto relative group">
-              <img
-                src={generatedImage}
-                alt="Generated"
-                className="w-64 h-auto rounded-xl border-2 border-white/20 shadow-2xl transition-transform hover:scale-105"
-              />
-              <button
-                onClick={() => setGeneratedImage(null)}
-                className="absolute -top-2 -right-2 bg-red-500 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
-              >
-                <RefreshCw size={16} />
-              </button>
-            </div>
-          )}
         </div>
+      )}
 
-        {/* Bottom Bar */}
-        <div className="flex items-end justify-center gap-8 pointer-events-auto">
+      {/* Bottom Controls */}
+      <div className="absolute bottom-0 left-0 right-0 p-8 z-20 pointer-events-none flex justify-center items-end gap-8 bg-gradient-to-t from-black/90 to-transparent">
+        <div className="pointer-events-auto">
           <StyleSelector
             styles={STYLES}
             selected={selectedStyle}
             onSelect={setSelectedStyle}
           />
-
-          <button
-            onClick={handleGenerate}
-            disabled={isGenerating}
-            className="h-24 w-24 rounded-full bg-gradient-to-br from-pink-500 to-violet-600 flex flex-col items-center justify-center gap-1 shadow-lg shadow-pink-500/30 hover:scale-105 active:scale-95 transition-all disabled:opacity-50 disabled:grayscale"
-          >
-            {isGenerating ? (
-              <RefreshCw className="animate-spin w-8 h-8" />
-            ) : (
-              <Wand2 className="w-8 h-8" />
-            )}
-            <span className="text-xs font-bold">GENERATE</span>
-          </button>
         </div>
+
+        <button
+          onClick={handleGenerate}
+          disabled={isGenerating}
+          className="pointer-events-auto h-20 w-20 rounded-full bg-gradient-to-br from-pink-500 to-violet-600 flex flex-col items-center justify-center gap-1 shadow-lg shadow-pink-500/30 hover:scale-105 active:scale-95 transition-all disabled:opacity-50 disabled:grayscale"
+        >
+          {isGenerating ? (
+            <RefreshCw className="animate-spin w-6 h-6" />
+          ) : (
+            <Wand2 className="w-6 h-6" />
+          )}
+          <span className="text-[10px] font-bold tracking-wider">GENERATE</span>
+        </button>
       </div>
     </div>
   )

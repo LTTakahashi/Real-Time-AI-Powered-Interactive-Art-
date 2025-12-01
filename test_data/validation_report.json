@@ -1,0 +1,56 @@
+{
+  "timestamp": "2025-12-01T13:14:14.666486",
+  "tests": {
+    "video_file_integrity": {
+      "status": "WARN",
+      "issues": [
+        "Non-standard resolution: 1280x720 (expected 640x480)"
+      ],
+      "properties": {
+        "size_kb": 969.9248046875,
+        "frames": 210,
+        "fps": 29.97002997002997,
+        "resolution": "1280x720",
+        "codec": "h264"
+      }
+    },
+    "mediapipe_detection": {
+      "status": "PASS",
+      "issues": [],
+      "metrics": {
+        "total_frames": 210,
+        "detected_frames": 210,
+        "detection_rate": 100.0,
+        "max_gap": 0
+      }
+    },
+    "frame_quality": {
+      "status": "WARN",
+      "issues": [
+        "Low contrast: 0.7"
+      ],
+      "metrics": {
+        "avg_brightness": 179.82,
+        "brightness_variance": 0.66
+      }
+    },
+    "codec_compatibility": {
+      "status": "PASS",
+      "issues": [],
+      "codec": "h264"
+    },
+    "edge_cases": {
+      "status": "PASS",
+      "issues": [],
+      "null_frames": 0,
+      "total_frames": 210
+    }
+  },
+  "summary": {
+    "total_tests": 5,
+    "passed": 3,
+    "warned": 2,
+    "failed": 0,
+    "ship_ready": true
+  }
+}
