@@ -1,10 +1,13 @@
 import { useEffect, useRef, useState } from 'react'
 import WebcamFeed from './components/WebcamFeed'
 import DrawingCanvas, { type DrawingCanvasRef } from './components/DrawingCanvas'
-import StatusPill, { type SystemStatus } from './components/StatusPill'
+import GestureIndicator from './components/GestureIndicator'
 import StyleSelector, { type StyleOption } from './components/StyleSelector'
+import OnboardingOverlay from './components/OnboardingOverlay'
+import LoadingScreen from './components/LoadingScreen'
+import { type SystemStatus } from './components/StatusPill' // Keep type import
 import { WebSocketClient } from './services/WebSocketClient'
-import { Wand2, RefreshCw } from 'lucide-react'
+import { Wand2, RefreshCw, HelpCircle } from 'lucide-react'
 
 const STYLES: StyleOption[] = [
   { id: 'photorealistic', name: 'Photo', color: 'bg-blue-500' },
@@ -15,11 +18,13 @@ const STYLES: StyleOption[] = [
 ]
 
 function App() {
+  const [backendReady, setBackendReady] = useState(true) // Force true to bypass health check issues
   const [status, setStatus] = useState<SystemStatus>('disconnected')
   const [selectedStyle, setSelectedStyle] = useState('photorealistic')
   const [generatedImage, setGeneratedImage] = useState<string | null>(null)
   const [isGenerating, setIsGenerating] = useState(false)
   const [demoMode, setDemoMode] = useState(false)
+  const [showOnboarding, setShowOnboarding] = useState(false)
 
   const wsRef = useRef<WebSocketClient | null>(null)
   const canvasRef = useRef<DrawingCanvasRef>(null)
@@ -27,6 +32,23 @@ function App() {
   const pollIntervalRef = useRef<number | null>(null)
 
   useEffect(() => {
+    // Check backend health
+    const checkBackend = async () => {
+      try {
+        await fetch('/health')
+        setBackendReady(true)
+      } catch {
+        setTimeout(checkBackend, 500)
+      }
+    }
+    checkBackend()
+
+    // Check local storage for onboarding
+    const hasSeen = localStorage.getItem('hasSeenOnboarding')
+    if (!hasSeen) {
+      setShowOnboarding(true)
+    }
+
     // Cleanup polling interval on unmount
     return () => {
       if (pollIntervalRef.current) {
@@ -35,18 +57,46 @@ function App() {
     }
   }, [])
 
+  const handleCloseOnboarding = () => {
+    setShowOnboarding(false)
+    localStorage.setItem('hasSeenOnboarding', 'true')
+  }
+
   useEffect(() => {
-    // Initialize WebSocket
-    const ws = new WebSocketClient('ws://localhost:8000/ws/tracking')
+    if (!backendReady) return
+
+    // Initialize WebSocket with dynamic URL
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
+    const wsUrl = `${protocol}//${window.location.host}/ws/tracking`
+
+    const ws = new WebSocketClient(wsUrl)
     wsRef.current = ws
 
     ws.on('open', () => setStatus('idle'))
     ws.on('close', () => setStatus('disconnected'))
     ws.on('error', () => setStatus('disconnected'))
 
-    ws.on('message', (data) => {
-      // Handle Drawing Commands
-      if (canvasRef.current) {
+    ws.on('message', (data: any) => {
+      if (!canvasRef.current) return
+
+      // Handle Gesture Status
+      if (data.gesture) {
+        // Map backend gestures to frontend status
+        if (data.gesture === 'POINTING_UP') {
+          // Drawing handled by 'action' below
+        } else if (data.gesture === 'OPEN_PALM') {
+          setStatus('hovering')
+        } else if (data.gesture === 'CLOSED_FIST') {
+          // Maybe clearing?
+        } else if (data.gesture === 'VICTORY') {
+          // Maybe undo?
+        } else {
+          setStatus('idle')
+        }
+      }
+
+      // Handle Drawing Actions
+      if (data.action) {
         const { action, points } = data
 
         if (action === 'start_stroke' && points) {
@@ -61,29 +111,15 @@ function App() {
         } else if (action === 'clear') {
           canvasRef.current.clear()
         } else if (action === 'undo') {
-          // Canvas component doesn't support undo yet (it's visual only)
-          // But backend handles logic. We might need to redraw everything?
-          // For now, simple clear or flash.
-          // Ideally, backend sends full stroke list on undo.
-          // For Phase 3 MVP, we'll ignore undo visual update or just clear.
-          canvasRef.current.clear() // Temporary: Undo clears all (limit of simple canvas)
+          canvasRef.current.clear()
         }
-      }
-
-      // Update Status based on Gesture
-      if (data.gesture === 'POINTING') {
-        // Handled above
-      } else if (data.gesture === 'OPEN_PALM') {
-        setStatus('hovering')
-      } else if (data.gesture === 'CLOSED_FIST') {
-        // Maybe trigger generation?
       }
     })
 
     ws.connect()
 
     return () => ws.disconnect()
-  }, [])
+  }, [backendReady])
 
   const handleFrame = (canvas: HTMLCanvasElement) => {
     // Limit FPS to 30 to save bandwidth
@@ -93,63 +129,64 @@ function App() {
 
     if (wsRef.current) {
       const base64 = canvas.toDataURL('image/jpeg', 0.7)
-      // Remove header
-      const data = base64.split(',')[1]
-      wsRef.current.send(data)
+      wsRef.current.send(base64)
     }
   }
 
   const handleGenerate = async () => {
+    if (!canvasRef.current) return
     if (isGenerating) return
     setIsGenerating(true)
     setStatus('processing')
 
     try {
-      const response = await fetch('http://localhost:8000/generate', {
+      const response = await fetch('/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           style: selectedStyle,
-          image: '' // Backend uses its own canvas state
+          image: canvasRef.current.getDataURL()
         })
       })
 
       const data = await response.json()
-      const requestId = data.request_id
 
-      // Poll for result with timeout
-      let pollCount = 0
-      const maxPolls = 60  // 60 seconds timeout
+      if (data.status === 'queued') {
+        const requestId = data.request_id
 
-      pollIntervalRef.current = setInterval(async () => {
-        if (pollCount++ > maxPolls) {
-          if (pollIntervalRef.current) clearInterval(pollIntervalRef.current)
-          setIsGenerating(false)
-          setStatus('idle')
-          alert('Generation timed out. Please try again.')
-          return
-        }
+        // Poll for result with timeout
+        let pollCount = 0
+        const maxPolls = 60  // 60 seconds timeout
 
-        try {
-          const res = await fetch(`http://localhost:8000/result/${requestId}`)
-          const result = await res.json()
-
-          if (result.status === 'complete') {
-            if (pollIntervalRef.current) clearInterval(pollIntervalRef.current)
-            setGeneratedImage(`data:image/jpeg;base64,${result.image}`)
-            setIsGenerating(false)
-            setStatus('idle')
-          } else if (result.status === 'failed') {
+        pollIntervalRef.current = window.setInterval(async () => {
+          if (pollCount++ > maxPolls) {
             if (pollIntervalRef.current) clearInterval(pollIntervalRef.current)
             setIsGenerating(false)
             setStatus('idle')
-            alert('Generation failed: ' + (result.error || 'Unknown error'))
+            alert('Generation timed out. Please try again.')
+            return
           }
-        } catch (pollError) {
-          console.error('Polling error:', pollError)
-        }
-      }, 1000)
 
+          try {
+            const res = await fetch(`/result/${requestId}`)
+            const result = await res.json()
+
+            if (result.status === 'complete') {
+              if (pollIntervalRef.current) clearInterval(pollIntervalRef.current)
+              setGeneratedImage(`data:image/jpeg;base64,${result.image}`)
+              setIsGenerating(false)
+              setStatus('idle')
+            } else if (result.status === 'failed') {
+              if (pollIntervalRef.current) clearInterval(pollIntervalRef.current)
+              setIsGenerating(false)
+              setStatus('idle')
+              alert('Generation failed: ' + (result.error || 'Unknown error'))
+            }
+          } catch (pollError) {
+            console.error('Polling error:', pollError)
+          }
+        }, 1000)
+      }
     } catch (e) {
       console.error(e)
       setIsGenerating(false)
@@ -158,8 +195,15 @@ function App() {
     }
   }
 
+  // Show loading screen while backend initializes
+  // if (!backendReady) {
+  //   return <LoadingScreen message="Initializing AI Model..." />
+  // }
+
   return (
     <div className="relative w-screen h-screen bg-neutral-950 text-white overflow-hidden selection:bg-purple-500/30 font-sans">
+
+      <OnboardingOverlay isOpen={showOnboarding} onClose={handleCloseOnboarding} />
 
       {/* Header */}
       <div className="absolute top-0 left-0 right-0 z-50 p-6 flex justify-between items-start bg-gradient-to-b from-black/80 to-transparent pointer-events-none">
@@ -167,15 +211,23 @@ function App() {
           <h1 className="text-3xl font-bold tracking-tighter bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent drop-shadow-lg">
             GestureCanvas
           </h1>
-          <StatusPill status={status} />
+          <GestureIndicator status={status} />
         </div>
 
-        <div className="pointer-events-auto">
+        <div className="pointer-events-auto flex items-center gap-4">
+          <button
+            onClick={() => setShowOnboarding(true)}
+            className="p-2 rounded-full bg-white/5 border border-white/10 text-white/50 hover:bg-white/10 hover:text-white transition-all"
+            title="Help"
+          >
+            <HelpCircle size={20} />
+          </button>
+
           <button
             onClick={() => setDemoMode(!demoMode)}
             className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all border ${demoMode
-                ? 'bg-purple-500/20 border-purple-500 text-purple-300 shadow-[0_0_10px_rgba(168,85,247,0.3)]'
-                : 'bg-white/5 border-white/10 text-white/50 hover:bg-white/10'
+              ? 'bg-purple-500/20 border-purple-500 text-purple-300 shadow-[0_0_10px_rgba(168,85,247,0.3)]'
+              : 'bg-white/5 border-white/10 text-white/50 hover:bg-white/10'
               }`}
           >
             {demoMode ? '● DEMO MODE' : '○ WEBCAM'}

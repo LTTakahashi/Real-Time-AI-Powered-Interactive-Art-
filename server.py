@@ -6,8 +6,12 @@ import time
 import asyncio
 import logging
 import uvicorn
+from pathlib import Path
 from typing import Dict, Optional
+from PIL import Image
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
@@ -23,7 +27,12 @@ logger = logging.getLogger("GestureCanvasServer")
 
 app = FastAPI(title="GestureCanvas API")
 
-# CORS
+# Configure paths
+BASE_DIR = Path(__file__).resolve().parent
+FRONTEND_DIST = BASE_DIR / "frontend" / "dist"
+FRONTEND_PUBLIC = BASE_DIR / "frontend" / "public"
+
+# CORS (only for development - disabled for same-origin in production)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],  # Allow all for dev
@@ -221,6 +230,7 @@ async def result_poller():
                 result = state.threading_manager.result_queue.get_nowait()
                 # Store result with timestamp for TTL cleanup
                 results_store[result.request_id] = (result, time.time())
+                logger.info(f"Result stored: {result.request_id}, success={result.success}")
             await asyncio.sleep(0.1)
         except Exception as e:
             logger.error(f"Poller error: {e}")
@@ -254,8 +264,15 @@ async def get_result(request_id: str):
     if request_id in results_store:
         result, _timestamp = results_store[request_id]  # Unpack tuple
         if result.success:
+            # Convert PIL Image to numpy array (RGB -> BGR)
+            if isinstance(result.styled_image, Image.Image):
+                img_np = np.array(result.styled_image)
+                img_bgr = cv2.cvtColor(img_np, cv2.COLOR_RGB2BGR)
+            else:
+                img_bgr = result.styled_image
+
             # Encode image
-            _, buffer = cv2.imencode('.jpg', result.styled_image)
+            _, buffer = cv2.imencode('.jpg', img_bgr)
             img_str = base64.b64encode(buffer).decode('utf-8')
             return {"status": "complete", "image": img_str, "time": result.metadata.get('generation_time')}
         else:
@@ -263,10 +280,40 @@ async def get_result(request_id: str):
     
     # Check if still in queue
     pos = state.generation_queue.get_queue_position(request_id)
-    if pos is not None:
-        return {"status": "processing" if pos == 0 else "queued", "position": pos}
+    if pos >= 0:
+        logger.debug(f"Request {request_id} still in queue at position {pos}")
+        return {"status": "queued", "position": pos}
     
+    logger.warning(f"Request {request_id} not found in results_store or queue")
     return {"status": "not_found"}
+
+# Health Check Endpoint
+@app.get("/health")
+async def health_check():
+    """Health check endpoint for loading screen"""
+    return {"status": "ok", "model_loaded": state.style_transfer is not None}
+
+# Static File Serving (Production)
+if FRONTEND_DIST.exists():
+    # Mount assets directory
+    app.mount("/assets", StaticFiles(directory=FRONTEND_DIST / "assets"), name="assets")
+    
+    # Serve demo.mp4 from public
+    if FRONTEND_PUBLIC.exists():
+        @app.get("/demo.mp4")
+        async def serve_demo():
+            demo_path = FRONTEND_PUBLIC / "demo.mp4"
+            if demo_path.exists():
+                return FileResponse(demo_path, media_type="video/mp4")
+            raise HTTPException(status_code=404, detail="Demo video not found")
+    
+    # Root route - serve index.html
+    @app.get("/")
+    async def serve_root():
+        index_path = FRONTEND_DIST / "index.html"
+        if index_path.exists():
+            return FileResponse(index_path)
+        raise HTTPException(status_code=404, detail="Frontend not built. Run 'npm run build' in frontend/")
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000)

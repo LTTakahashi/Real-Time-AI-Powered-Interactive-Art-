@@ -1,10 +1,11 @@
-import React, { useRef, useImperativeHandle, forwardRef } from 'react'
+import { useRef, useImperativeHandle, forwardRef } from 'react'
 
 export interface DrawingCanvasRef {
     startStroke: (x: number, y: number) => void
     drawPoint: (x: number, y: number) => void
     endStroke: () => void
     clear: () => void
+    getDataURL: () => string | null
 }
 
 interface DrawingCanvasProps {
@@ -42,6 +43,9 @@ const DrawingCanvas = forwardRef<DrawingCanvasRef, DrawingCanvasProps>(({ width,
             if (ctx) {
                 ctx.clearRect(0, 0, width, height)
             }
+        },
+        getDataURL: () => {
+            return canvasRef.current ? canvasRef.current.toDataURL('image/jpeg', 0.8) : null
         }
     }))
 

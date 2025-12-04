@@ -40,14 +40,14 @@ git clone https://github.com/LTTakahashi/Real-Time-AI-Powered-Interactive-Art-.g
 cd Real-Time-AI-Powered-Interactive-Art-
 
 # Create & Activate Virtual Environment
-python3 -m venv venv
+python3.11 -m venv venv
 source venv/bin/activate  # Windows: venv\Scripts\activate
 
 # Install Python Dependencies
 pip install -r requirements.txt
 
 # Start the API Server
-python server.py
+python3.11 server.py
 ```
 *Server runs at `http://localhost:8000`*
 
@@ -62,7 +62,13 @@ npm install
 # Start the UI
 npm run dev
 ```
-*UI runs at `http://localhost:5173`*
+*UI runs at `http://localhost:5173` (Open this in your browser)*
+
+## Troubleshooting
+
+- **"Disconnected" Status**: Refresh the page. The frontend will automatically reconnect to the backend via the configured proxy.
+- **Generation Timeout**: If generation hangs or fails, restart the backend server (`Ctrl+C` then `python3.11 server.py`).
+- **Camera Not Working**: Ensure you've granted browser permissions. If using WSL, ensure your camera is accessible or use a virtual webcam.
 
 ---
 

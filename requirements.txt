@@ -10,3 +10,9 @@ transformers
 accelerate
 scipy
 gradio>=5.9.1
+# Desktop App Dependencies
+fastapi>=0.109.0
+uvicorn[standard]>=0.27.0
+websockets>=12.0
+pywebview>=4.4.1,<5.0  # 4.x is more stable with Python 3.13
+requests>=2.31.0  # For health check

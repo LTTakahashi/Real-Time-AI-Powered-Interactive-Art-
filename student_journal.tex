@@ -1,0 +1,250 @@
+\documentclass[11pt,letterpaper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[margin=1in]{geometry}
+\usepackage{graphicx}
+\usepackage{hyperref}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{fancyhdr}
+\usepackage{enumitem}
+\usepackage{tcolorbox}
+
+% Colors
+\definecolor{codegray}{rgb}{0.5,0.5,0.5}
+\definecolor{codepurple}{rgb}{0.58,0,0.82}
+\definecolor{backcolour}{rgb}{0.95,0.95,0.92}
+
+% Code listing style
+\lstdefinestyle{mystyle}{
+    backgroundcolor=\color{backcolour},   
+    commentstyle=\color{codegray},
+    keywordstyle=\color{magenta},
+    numberstyle=\tiny\color{codegray},
+    stringstyle=\color{codepurple},
+    basicstyle=\ttfamily\footnotesize,
+    breakatwhitespace=false,         
+    breaklines=true,                 
+    captionpos=b,                    
+    keepspaces=true,                 
+    numbers=left,                    
+    numbersep=5pt,                  
+    showspaces=false,                
+    showstringspaces=false,
+    showtabs=false,                  
+    tabsize=2
+}
+\lstset{style=mystyle}
+
+% Header/Footer
+\pagestyle{fancy}
+\fancyhf{}
+\rhead{Student Development Journal}
+\lhead{GestureCanvas Project}
+\rfoot{Page \thepage}
+
+\title{\textbf{From Vision to Reality: A Journey in AI Engineering} \\
+\large Development Journal for GestureCanvas}
+\author{Student Developer}
+\date{Fall 2025}
+
+\begin{document}
+
+\maketitle
+\tableofcontents
+\newpage
+
+%=============================================================================
+\section{Introduction}
+%=============================================================================
+
+This journal documents my five-week journey building \textbf{GestureCanvas}, a real-time AI-powered interactive art system. My goal was to move beyond simple "tutorial code" and build a production-grade application that combines Computer Vision (CV), Generative AI, and robust software engineering.
+
+Coming into this project, I had a basic understanding of Python but limited experience with real-time systems, multi-threading, and the intricacies of deploying large ML models like Stable Diffusion. This project was a trial by fire.
+
+%=============================================================================
+\section{Week 1: The Vision \& The Hand (Computer Vision)}
+%=============================================================================
+
+\subsection{Objectives}
+The first step was to build the "eyes" of the system. I needed to track a user's hand in real-time and interpret specific gestures to control a drawing interface.
+
+\subsection{Key Learnings}
+
+\subsubsection{1. MediaPipe \& Landmark Detection}
+I learned that modern CV has moved far beyond simple color thresholding. Google's MediaPipe framework provides 21 3D landmarks for the hand.
+\begin{itemize}
+    \item \textbf{Concept:} The model doesn't just "see" a hand; it infers the skeletal structure ($x, y, z$ coordinates).
+    \item \textbf{Challenge:} The raw data is jittery. A hand held "still" actually vibrates at a micro-level, which would make drawing jagged.
+    \item \textbf{Solution:} I implemented **Exponential Moving Average (EMA)** smoothing.
+    \[ S_t = \alpha \cdot x_t + (1-\alpha) \cdot S_{t-1} \]
+    This was my first application of signal processing theory to a real-world problem.
+\end{itemize}
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=0.8\textwidth]{journal_figures/ema_smoothing.png}
+    \caption{Visualizing the effect of EMA smoothing on noisy hand tracking data. The orange line represents the stabilized output used for drawing.}
+    \label{fig:ema}
+\end{figure}
+
+\subsubsection{2. Geometric Gesture Recognition}
+Instead of training a neural network (which would require a massive dataset), I used **heuristic geometry**.
+\begin{itemize}
+    \item \textbf{Euclidean Distance:} I calculated distances between fingertips and the wrist to determine if fingers were "open" or "closed".
+    \item \textbf{Normalization:} I realized that "distance" varies if the hand is close to the camera. I had to normalize these distances by the scale of the hand (wrist-to-middle-finger distance) to make the system robust to depth changes.
+\end{itemize}
+
+\subsection{Reflection}
+Week 1 taught me that **data cleaning is 80\% of the work**. Getting the landmarks was easy; making them usable for drawing required math and patience.
+
+%=============================================================================
+\section{Week 2: The Art of AI (Generative Models)}
+%=============================================================================
+
+\subsection{Objectives}
+With the hand tracking working, I needed to implement the "brain": the drawing canvas and the AI style transfer.
+
+\subsection{Key Learnings}
+
+\subsubsection{1. Latent Diffusion Models (LDMs)}
+I dove deep into Stable Diffusion. I learned that it doesn't generate pixels directly; it denoises in a "latent space" (compressed representation) to save computation.
+\begin{itemize}
+    \item \textbf{The Bottleneck:} Standard SDXL takes 10-20 seconds to generate an image. This is too slow for "real-time".
+    \item \textbf{The Breakthrough:} I discovered **SDXL-Turbo**, a distilled model that can generate high-quality images in just 1-4 steps (vs. 50). This reduced inference time from 15s to $\sim$0.8s.
+\end{itemize}
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=0.7\textwidth]{journal_figures/latency_comparison.png}
+    \caption{Inference latency comparison. SDXL-Turbo enables near real-time performance compared to the standard model.}
+    \label{fig:latency}
+\end{figure}
+
+\subsubsection{2. Catmull-Rom Splines}
+My raw drawing points were still a bit polygonal. I learned about **Catmull-Rom splines**, a mathematical way to interpolate smooth curves between points. This turned jagged "connect-the-dots" lines into fluid, artistic strokes.
+
+\subsection{Challenges}
+\textbf{VRAM Management:} Loading a 6GB model into memory alongside the OS overhead was tricky. I learned about `torch.float16` quantization to halve the memory footprint without losing perceptible quality.
+
+%=============================================================================
+\section{Week 3: The Need for Speed (Concurrency)}
+%=============================================================================
+
+\subsection{Objectives}
+The application was functional but laggy. The UI froze while the AI was thinking. Week 3 was about architecture.
+
+\subsection{Key Learnings}
+
+\subsubsection{1. The Global Interpreter Lock (GIL)}
+I hit a hard wall with Python's GIL. CPU-bound tasks (like processing frames) were blocking the UI thread.
+\begin{itemize}
+    \item \textbf{Solution:} I designed a **3-Thread Architecture**:
+    \begin{enumerate}
+        \item \textbf{Main Thread:} UI \& Event Loop (Gradio)
+        \item \textbf{CV Thread:} Webcam \& MediaPipe (30 FPS)
+        \item \textbf{GenAI Thread:} Stable Diffusion (Async Queue)
+    \end{enumerate}
+\end{itemize}
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=\textwidth]{journal_figures/architecture_diagram.png}
+    \caption{The 3-Thread Architecture designed to decouple the UI from heavy computation, ensuring a smooth user experience.}
+    \label{fig:arch}
+\end{figure}
+
+\subsubsection{2. Race Conditions \& Locks}
+With threads sharing data (the canvas), I encountered "race conditions" where the AI would read the canvas while the user was writing to it, causing glitches.
+\begin{itemize}
+    \item \textbf{New Knowledge:} I learned to use `threading.Lock()` and context managers (`with self.lock:`) to ensure atomic access.
+    \item \textbf{Optimization:} I minimized the "critical section" (time the lock is held) to $<0.2$ms to prevent frame drops.
+\end{itemize}
+
+\subsection{Reflection}
+This was the hardest week. Debugging multi-threaded applications is non-deterministic and painful. But seeing the UI remain buttery smooth while the AI crunched numbers in the background was incredibly satisfying.
+
+%=============================================================================
+\section{Week 4: Integration \& Polish}
+%=============================================================================
+
+\subsection{Objectives}
+Connecting the pieces. I built the UI using Gradio and focused on user experience (UX).
+
+\subsection{Key Learnings}
+
+\subsubsection{1. State Management}
+Managing the state of a complex application (Is the user drawing? Is the AI generating? Is the camera on?) required a robust **State Machine**. I learned to stop using loose variables and start using structured state objects.
+
+\subsubsection{2. Performance Profiling}
+I used `cProfile` to find bottlenecks. I discovered that redrawing the entire canvas every frame was wasteful. I implemented **"Dirty Rectangle" rendering**, updating only the pixels that changed. This saved $>90\%$ of rendering time.
+
+%=============================================================================
+\section{Week 5: Going Pro (Modern Stack \& Validation)}
+%=============================================================================
+
+\subsection{Objectives}
+The final push. We migrated from Gradio (prototyping tool) to a professional stack (React + FastAPI) and performed deep validation.
+
+\subsection{Key Learnings}
+
+\subsubsection{1. Modern Web Architecture}
+I learned how to decouple the frontend and backend completely.
+\begin{itemize}
+    \item \textbf{WebSockets:} For low-latency hand tracking data (streaming JSON at 30Hz).
+    \item \textbf{REST API:} For asynchronous AI generation tasks.
+    \item \textbf{React/Vite:} Building a responsive, component-based UI.
+\end{itemize}
+
+\subsubsection{2. The "Coordinate Hell"}
+I faced a critical bug where the drawing was offset from the hand.
+\begin{itemize}
+    \item \textbf{Discovery:} The backend canvas was $1024\times1024$, but the frontend video feed was $640\times480$.
+    \item \textbf{Lesson:} **Coordinate Systems matter.** Always normalize inputs ($0.0-1.0$) or strictly enforce resolution consistency across the full stack.
+\end{itemize}
+
+\subsubsection{3. Production Validation (Demo Mode)}
+To prove the system was "ship-ready," I couldn't rely on "it works on my machine."
+\begin{itemize}
+    \item I implemented a **Demo Mode** using a pre-recorded H.264 video.
+    \item I wrote automated scripts to validate **100\% detection rates** and verify that the system runs indefinitely without memory leaks.
+    \item This taught me the difference between "code that runs" and "software that ships."
+\end{itemize}
+
+\subsubsection{4. Deep Dive: Automated Output Generation}
+To verify the entire pipeline (Hand Tracking $\rightarrow$ Canvas $\rightarrow$ Stable Diffusion), I created a script to generate "ground truth" outputs from the demo video. This process revealed fascinating insights into how the AI interprets our drawing.
+
+\textbf{The "Black Image" Bug:}
+Initially, my generated images were completely black.
+\begin{itemize}
+    \item \textbf{Investigation:} I traced the pixel values. The canvas was empty.
+    \item \textbf{Root Cause:} The hand tracker returned pixel coordinates (e.g., $x=300$), but my generation script was multiplying them by the canvas width \textit{again} ($300 \times 640 = 192,000$), pushing all points off-screen.
+    \item \textbf{Fix:} I removed the redundant scaling. This reinforced the lesson: \textit{always verify your data types and coordinate spaces.}
+\end{itemize}
+
+\textbf{Style Analysis:}
+Once fixed, I generated 5 distinct outputs from the same simple white-on-black sketch:
+\begin{enumerate}
+    \item \textbf{Photorealistic:} The model interpreted the white lines as light sources, creating a neon-like effect in a dark room. It "hallucinated" depth where there was none.
+    \item \textbf{Anime:} This style flattened the image, adding cell-shading and vibrant colors. It interpreted the curves as magical effects common in anime.
+    \item \textbf{Oil Painting:} The most abstract result. It turned the thin lines into thick, textured brushstrokes, blending colors to create a cohesive composition.
+    \item \textbf{Sketch:} Interestingly, this was the most faithful to the original input but added "pencil texture" and shading, making it look like a professional draft.
+\end{enumerate}
+
+\textbf{Insight:} The "ControlNet" effect (using the sketch as a guide) is powerful but sensitive. The \textit{prompt} (e.g., "oil painting") drastically changes how the model interprets the same geometric lines.
+
+%=============================================================================
+\section{Conclusion}
+%=============================================================================
+
+Building GestureCanvas was a transformative experience. I started with a script that could detect a hand; I ended with a multi-threaded, distributed AI application.
+
+\textbf{Top 3 Takeaways:}
+\begin{enumerate}
+    \item \textbf{Architecture $>$ Algorithms:} A mediocre model in a good architecture is usable. A great model in a bad architecture is broken.
+    \item \textbf{Async is King:} In UI applications, never block the main thread. Ever.
+    \item \textbf{Validate Everything:} Assumptions (like "the video is 640x480") are the root of all bugs.
+\end{enumerate}
+
+This project gave me the confidence to call myself not just a student of ML, but an \textbf{AI Engineer}.
+
+\end{document}
